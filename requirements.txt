@@ -5,6 +5,9 @@ python-dotenv>=1.0.0
 jinja2>=3.1.0
 tqdm>=4.66.0
 
+# GUI 启动器依赖
+tkinterdnd2>=0.3.0     # 拖放文件支持（Windows 下需要 pip install tkinterdnd2）
+
 # 可选依赖
 pandas>=2.0.0          # CSV 数据处理（loader 和 reporter 可选使用）
 openai>=1.30.0         # 如果使用 OpenAI SDK 兼容模式

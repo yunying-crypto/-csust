@@ -204,9 +204,16 @@ class EvalLauncher:
             self._update_status("[1/3] 正在转化文件...")
             json_path = auto_convert(self.file_path, max_problems=self.max_var.get())
 
-            # Step 2: 评测
+            # Step 2: 评测（在非主线程中用 new_event_loop，避免 asyncio.run 兼容性问题）
             self._update_status("[2/3] 正在评测题目...")
-            html_path = asyncio.run(run_evaluation(json_path, self.concurrency_var.get()))
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                html_path = loop.run_until_complete(
+                    run_evaluation(json_path, self.concurrency_var.get())
+                )
+            finally:
+                loop.close()
 
             # Step 3: 打开报告
             self._update_status("[3/3] 评测完成！正在打开报告...")

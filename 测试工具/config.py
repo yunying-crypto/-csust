@@ -1,11 +1,10 @@
 """
 Configuration management - loads API keys and model settings from .env file.
+The .env file should be placed at the project root directory.
 """
 import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
-
-_loaded = False
 
 
 @dataclass
@@ -23,14 +22,32 @@ class EvalConfig:
     deepseek: LLMConfig
 
 
+def _get_project_root() -> str:
+    """Return the project root directory (parent of 测试工具/)."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 def load_config(dotenv_path: str = None) -> EvalConfig:
-    global _loaded
-    if not _loaded:
-        if dotenv_path is None:
-            dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-        load_dotenv(dotenv_path)
-        _loaded = True
-    return get_config()
+    """Load .env from project root, then validate and return config."""
+    if dotenv_path is None:
+        dotenv_path = os.path.join(_get_project_root(), ".env")
+    load_dotenv(dotenv_path, override=False)
+
+    cfg = get_config()
+
+    # Validate required API keys
+    missing = []
+    if not cfg.intern_s1.api_key or cfg.intern_s1.api_key.startswith("your_"):
+        missing.append("INTERN_S1_API_KEY")
+    if not cfg.deepseek.api_key or cfg.deepseek.api_key.startswith("your_"):
+        missing.append("DEEPSEEK_API_KEY")
+    if missing:
+        raise ValueError(
+            f"缺少 API Key: {', '.join(missing)}。"
+            f"请复制 .env.example 为项目根目录的 .env 并填入正确的 Key。"
+        )
+
+    return cfg
 
 
 def get_config() -> EvalConfig:

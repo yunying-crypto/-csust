@@ -1,3 +1,9 @@
+// ============================================================
+// make_ppt.js — 挑战杯 PPT 生成工具（独立脚本）
+// 用途：生成比赛答辩用 PPT，与 Python 评测系统无关。
+// 运行：npm install pptxgenjs && node make_ppt.js
+// 输出：D:\挑战杯\挑战杯计划书.pptx
+// ============================================================
 const pptxgen = require("pptxgenjs");
 const path = require("path");
 

@@ -34,7 +34,8 @@ DIR_OUTPUT = os.path.join(BASE_RESULT, "原本输出和推理过程")  # JSON
 DIR_PROBLEMS = os.path.join(BASE_RESULT, "原本问题")         # copy of problems file
 
 
-def _safe_str(s, maxlen=50):
+def _gbk_safe_str(s, maxlen=50):
+    """Truncate and make a string safe for GBK console output."""
     s = str(s)[:maxlen]
     try:
         s.encode("gbk")
@@ -107,7 +108,7 @@ async def run_evaluation(problems_path, concurrency=3):
         result = await coro
         results.append(result)
         status = "PASS" if result.is_correct else "FAIL"
-        print(f"  [{i}/{len(problems)}] {status} {result.problem_id}: {_safe_str(result.intern_answer)}")
+        print(f"  [{i}/{len(problems)}] {status} {result.problem_id}: {_gbk_safe_str(result.intern_answer)}")
     results.sort(key=lambda r: r.problem_id)
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -160,7 +161,15 @@ def main():
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(
+                os.path.join(BASE_RESULT, "evaluation.log"),
+                encoding="utf-8",
+            ),
+        ],
     )
+    os.makedirs(BASE_RESULT, exist_ok=True)
     load_config()
 
     # Step 1: 自动转化

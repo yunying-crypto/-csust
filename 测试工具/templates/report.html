@@ -109,7 +109,7 @@
             <div class="summary-card"><div class="label">Total</div><div class="value" style="color:#E0E0E0;">{{ summary.total }}</div></div>
             <div class="summary-card correct"><div class="label">Correct</div><div class="value">{{ summary.correct }}</div></div>
             <div class="summary-card incorrect"><div class="label">Incorrect</div><div class="value">{{ summary.incorrect }}</div></div>
-            <div class="summary-card accuracy"><div class="label">Accuracy</div><div class="value">{{ "%.1f"|format(summary.accuracy * 100) }}%</div></div>
+            <div class="summary-card accuracy"><div class="label">Accuracy</div><div class="value">{{ "%.1f"|format(summary.accuracy) }}%</div></div>
             <div class="summary-card time"><div class="label">Inference Time</div><div class="value">{{ "%.0f"|format(summary.total_inference_time) }}s</div></div>
             <div class="summary-card time"><div class="label">Tokens</div><div class="value">{{ summary.total_tokens }}</div></div>
         </div>
@@ -128,14 +128,14 @@
             <span>Error {{ "%.1f"|format(ep) }}%</span>
         </div>
 
-        {% if summary.by_domain %}
+        {% if summary.domain_stats %}
         <h2 class="section-title">By Domain</h2>
         <div class="domain-grid">
-            {% for domain, stats in summary.by_domain.items() %}
-            <div class="domain-item" style="border-left: 3px solid {{ domain_colors.get(domain, '#00C5FF') }};">
-                <span class="domain-name" style="color:{{ domain_colors.get(domain, '#00C5FF') }};">{{ domain }}</span>
+            {% for domain, stats in summary.domain_stats.items() %}
+            <div class="domain-item">
+                <span class="domain-name">{{ domain }}</span>
                 <div class="domain-stats">
-                    <span class="acc" style="color:{{ domain_colors.get(domain, '#00C5FF') }};">{{ "%.0f"|format(stats.accuracy * 100) }}%</span><br>
+                    <span class="acc">{{ "%.0f"|format(stats.accuracy) }}%</span><br>
                     {{ stats.correct }}/{{ stats.total }} correct
                 </div>
             </div>
@@ -153,32 +153,32 @@
             <tbody>
                 {% for r in results %}
                 <tr>
-                    <td><strong>{{ r.id }}</strong></td>
-                    <td><span style="color:{{ domain_colors.get(r.domain, '#8899AA') }};">{{ r.domain }}</span></td>
-                    <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.question }}</td>
-                    <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.model_answer }}</td>
+                    <td><strong>{{ r.problem_id }}</strong></td>
+                    <td><span style="color:#8899AA;">{{ r.domain or '-' }}</span></td>
+                    <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.question|e }}</td>
+                    <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.intern_answer|e }}</td>
                     <td>
-                        {% if r.status == 'correct' %}
+                        {% if r.is_correct %}
                         <span class="badge badge-correct">Correct</span>
-                        {% elif r.status == 'incorrect' %}
-                        <span class="badge badge-incorrect">Incorrect</span>
-                        {% else %}
+                        {% elif r.inference_error or r.judge_error %}
                         <span class="badge badge-error">Error</span>
+                        {% else %}
+                        <span class="badge badge-incorrect">Incorrect</span>
                         {% endif %}
                     </td>
-                    <td>{{ "%.0f"|format(r.judge_confidence * 100) }}%</td>
-                    <td><button class="expand-btn" onclick="toggleDetail('detail-{{ r.id }}')">Expand</button></td>
+                    <td>{{ "%.0f"|format(r.confidence * 100) }}%</td>
+                    <td><button class="expand-btn" onclick="toggleDetail('detail-{{ r.problem_id }}')">Expand</button></td>
                 </tr>
-                <tr class="detail-row" id="detail-{{ r.id }}">
+                <tr class="detail-row" id="detail-{{ r.problem_id }}">
                     <td colspan="7">
                         <div class="detail-content">
-                            <div class="detail-label">Full Question</div><div>{{ r.question_full }}</div>
-                            <div class="detail-label">Reference Answer</div><div>{{ r.reference_answer }}</div>
-                            <div class="detail-label">Model Full Answer</div><div>{{ r.model_answer_full }}</div>
-                            <div class="detail-label">Reasoning</div><div>{{ r.model_reasoning }}</div>
-                            <div class="detail-label">Judgment</div><div>{{ r.judge_reasoning }}</div>
-                            {% if r.inference_error %}<div class="detail-label" style="color:var(--error);">Inference Error</div><div>{{ r.inference_error }}</div>{% endif %}
-                            {% if r.judge_error %}<div class="detail-label" style="color:var(--error);">Judge Error</div><div>{{ r.judge_error }}</div>{% endif %}
+                            <div class="detail-label">Full Question</div><div>{{ r.question|e }}</div>
+                            <div class="detail-label">Reference Answer</div><div>{{ (r.reference_answer or 'N/A')|e }}</div>
+                            <div class="detail-label">Model Answer</div><div>{{ r.intern_answer|e }}</div>
+                            <div class="detail-label">Reasoning</div><div>{{ r.intern_reasoning|e }}</div>
+                            <div class="detail-label">Judgment</div><div>{{ r.judge_explanation|e }}</div>
+                            {% if r.inference_error %}<div class="detail-label" style="color:var(--error);">Inference Error</div><div>{{ r.inference_error|e }}</div>{% endif %}
+                            {% if r.judge_error %}<div class="detail-label" style="color:var(--error);">Judge Error</div><div>{{ r.judge_error|e }}</div>{% endif %}
                         </div>
                     </td>
                 </tr>

@@ -55,10 +55,10 @@ class LLMClient:
             payload["response_format"] = response_format
 
         last_error = None
-        for attempt in range(self.config.max_retries):
-            try:
-                async with httpx.AsyncClient(timeout=self.config.timeout) as c:
-                    resp = await c.post(self._url, headers=headers, json=payload)
+        async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+            for attempt in range(self.config.max_retries):
+                try:
+                    resp = await client.post(self._url, headers=headers, json=payload)
                     resp.raise_for_status()
                     data = resp.json()
                     choice = data["choices"][0]
@@ -67,19 +67,19 @@ class LLMClient:
                         "tokens_used": data.get("usage", {}).get("total_tokens", 0),
                         "finish_reason": choice.get("finish_reason", "unknown"),
                     }
-            except httpx.TimeoutException as e:
-                last_error = APITimeoutError(str(e))
-                logger.warning(str(last_error))
-            except httpx.HTTPStatusError as e:
-                last_error = APIResponseError(f"HTTP {e.response.status_code}")
-                logger.warning(str(last_error))
-                if 400 <= e.response.status_code < 500:
-                    raise last_error
-            except Exception as e:
-                last_error = LLMClientError(str(e))
-                logger.warning(str(last_error))
-            if attempt < self.config.max_retries - 1:
-                await asyncio.sleep(2 ** attempt)
+                except httpx.TimeoutException as e:
+                    last_error = APITimeoutError(str(e))
+                    logger.warning(str(last_error))
+                except httpx.HTTPStatusError as e:
+                    last_error = APIResponseError(f"HTTP {e.response.status_code}")
+                    logger.warning(str(last_error))
+                    if 400 <= e.response.status_code < 500:
+                        raise last_error
+                except Exception as e:
+                    last_error = LLMClientError(str(e))
+                    logger.warning(str(last_error))
+                if attempt < self.config.max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
         raise last_error or LLMClientError("unknown error")
 
 
