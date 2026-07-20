@@ -24,7 +24,11 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "转化工具"))
 
 class EvalLauncher:
     def __init__(self):
-        self.root = tk.Tk()
+        try:
+            from tkinterdnd2 import TkinterDnD
+            self.root = TkinterDnD.Tk()
+        except Exception:
+            self.root = tk.Tk()
         self.root.title("数学智能体评测器")
         self.root.geometry("520x420")
         self.root.resizable(True, True)
@@ -239,8 +243,8 @@ class EvalLauncher:
             from tkinterdnd2 import DND_FILES
             self.root.drop_target_register(DND_FILES)
             self.root.dnd_bind("<<Drop>>", self._on_drop)
-        except ImportError:
-            # tkinterdnd2 未安装，不影响基本使用
+        except (ImportError, AttributeError):
+            # tkinterdnd2 未安装或窗口不支持拖放，不影响基本使用
             pass
 
         self.root.mainloop()
