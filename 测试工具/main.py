@@ -158,10 +158,14 @@ def auto_convert(file_path: str, max_problems: int = 0) -> str:
         print("\n[转化] 检测到 Excel 文件，正在转化...")
         from 转化工具.xlsx_to_json import convert_xlsx
         problems = convert_xlsx(file_path, max_problems=max_problems)
+    elif ext == ".txt":
+        print("\n[转化] 检测到 TXT 文件，正在转化...")
+        from 转化工具.txt_to_json import convert_txt
+        problems = convert_txt(file_path, max_problems=max_problems)
     else:
         raise ValueError(
             f"不支持的文件格式: {ext}"
-            f"（支持 .pdf / .docx / .pptx / .ppt / .md / .xlsx / .json / .csv）"
+            f"（支持 .pdf / .docx / .pptx / .ppt / .md / .xlsx / .txt / .json / .csv）"
         )
 
     if not problems:

@@ -159,11 +159,12 @@ class EvalLauncher:
         path = filedialog.askopenfilename(
             title="选择题目文件",
             filetypes=[
-                ("所有支持格式", "*.pdf;*.docx;*.json;*.csv"),
+                ("所有支持格式", "*.pdf;*.docx;*.json;*.csv;*.txt;*.md;*.pptx;*.xlsx"),
                 ("PDF 文件", "*.pdf"),
                 ("Word 文档", "*.docx"),
                 ("JSON 文件", "*.json"),
                 ("CSV 文件", "*.csv"),
+                ("TXT 文件", "*.txt"),
             ]
         )
         if path:
