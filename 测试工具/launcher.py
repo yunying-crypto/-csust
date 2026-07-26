@@ -216,12 +216,13 @@ class EvalLauncher:
             # Step 3: 打开报告
             self._update_status("[3/3] 评测完成！正在打开报告...")
             if html_path and os.path.exists(html_path):
-                webbrowser.open(f"file:///{html_path.replace(os.sep, '/')}")
+                webbrowser.open(f"file:///{html_path.replace(os.sep, '/')}" )
 
             self.root.after(0, lambda: self._on_done(True, "评测完成！报告已打开。"))
 
         except Exception as e:
-            self.root.after(0, lambda: self._on_done(False, str(e)))
+            error_message = str(e)
+            self.root.after(0, lambda: self._on_done(False, error_message))
 
     def _update_status(self, text):
         self.root.after(0, lambda: self.status_var.set(text))

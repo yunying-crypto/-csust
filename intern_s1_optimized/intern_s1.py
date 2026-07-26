@@ -19,14 +19,14 @@ _INFERENCE_MAX_TOKENS = 4096    # 足以容纳完整的分步推理
 # 回退策略：答案为空时取推理首行的长度
 _FALLBACK_ANSWER_MAXLEN = 200
 
-# Intern-S1 系统提示词：要求输出结构化 JSON，包含答案、推理、步骤和验证
+# Intern-S1 系统提示词：要求输出结构化 JSON，包含答案、推理、步骤和严格自检
 SYSTEM_PROMPT = (
     "You are an expert math problem solver. "
     "For each problem, output a JSON object with these fields: "
     '"answer": the final answer, '
     '"reasoning": step-by-step reasoning in Chinese, '
     '"steps": array of reasoning steps, '
-    '"verification": self-check of the answer. '
+    '"verification": a Chinese self-check that verifies the reasoning and final answer, identifies any errors, and confirms the correctness. '
     "Output ONLY the JSON object, no extra text."
 )
 
@@ -72,6 +72,53 @@ def parse_intern_response(raw_content: str) -> dict:
     }
 
 
+def _verification_is_sufficient(verification: str) -> bool:
+    """
+    判断模型自检输出是否足够明确地确认答案是否正确。
+    """
+    if not verification or not verification.strip():
+        return False
+    text = verification.strip().lower()
+    if len(text) < 20:
+        return False
+    negative_signals = [
+        "错误", "不对", "不正确", "有误", "不成立", "矛盾", "不一致", "wrong",
+    ]
+    positive_signals = [
+        "正确", "无误", "没问题", "成立", "一致", "验证通过", "yes", "yep",
+    ]
+    if any(signal in text for signal in negative_signals):
+        return False
+    return any(signal in text for signal in positive_signals)
+
+
+def _build_self_check_prompt(problem: Problem, parsed: dict) -> str:
+    """
+    构建自检提示词，让模型再次检查自己的答案和推理。
+    """
+    answer = parsed.get("answer", "")
+    reasoning = parsed.get("reasoning", "")
+    steps = parsed.get("steps", [])
+    verification = parsed.get("verification", "")
+    return (
+        "请认真检查你自己刚才的回答。"
+        " 阅读问题、答案、推理过程和步骤，确认最终答案是否正确。"
+        " 如果发现任何错误，直接给出修正后的最终答案，并说明具体错误所在。"
+        " 如果确认没有错误，请明确说明该答案正确且推理无误。"
+        " 输出 ONLY 一个 JSON 对象，字段为："
+        '"answer": the final answer, '
+        '"verification": a Chinese self-check summary that confirms correctness or explains the mistake, '
+        '"reasoning": optional corrected reasoning if the answer changed, '
+        '"steps": optional corrected steps if the answer changed. '
+        "不要输出额外文本。"
+        f"\n问题：{problem.question}"
+        f"\n你给出的答案：{answer}"
+        f"\n你给出的推理：{reasoning}"
+        f"\n你给出的步骤：{steps}"
+        f"\n你给出的自检：{verification}"
+    )
+
+
 async def run_inference(problem: Problem) -> InferenceResult:
     """
     对单道题目执行 Intern-S1 推理。
@@ -98,6 +145,25 @@ async def run_inference(problem: Problem) -> InferenceResult:
         )
         latency = round(time.time() - start_time, 2)
         parsed = parse_intern_response(response["content"])
+
+        if not _verification_is_sufficient(parsed["verification"]):
+            self_check_prompt = _build_self_check_prompt(problem, parsed)
+            verify_response = await client.chat(
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": self_check_prompt},
+                ],
+                temperature=_INFERENCE_TEMPERATURE,
+                max_tokens=_INFERENCE_MAX_TOKENS,
+            )
+            parsed_verify = parse_intern_response(verify_response["content"])
+            parsed["answer"] = parsed_verify["answer"] or parsed["answer"]
+            parsed["verification"] = parsed_verify["verification"] or parsed["verification"]
+            parsed["reasoning"] = parsed_verify["reasoning"] or parsed["reasoning"]
+            parsed["steps"] = parsed_verify["steps"] or parsed["steps"]
+            response["content"] += "\n\n=== Self-check response ===\n" + verify_response["content"]
+            response["tokens_used"] = response.get("tokens_used", 0) + verify_response.get("tokens_used", 0)
+
         return InferenceResult(
             problem_id=problem.id,
             question=problem.question,
